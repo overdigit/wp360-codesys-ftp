@@ -1,0 +1,42 @@
+wp360-codesys-bridge (0.2.0-1) trixie; urgency=low
+
+  * Restart timesyncd after editing NTP settings.
+  * Remove FTP from the helper script.
+
+ -- Overdigit <info@overdigit.com>  Wed, 11 Mar 2026 10:30:34 +0100
+
+wp360-codesys-bridge (0.1.5-1) trixie; urgency=low
+
+  * Add ntp_config_set.
+
+ -- Overdigit <info@overdigit.com>  Tue, 03 Mar 2026 17:12:00 +0100
+
+wp360-codesys-bridge (0.1.4-1) trixie; urgency=low
+
+  * Improve ip_config_set robustness.
+
+ -- Overdigit <info@overdigit.com>  Tue, 03 Mar 2026 16:33:50 +0100
+
+wp360-codesys-bridge (0.1.3-1) trixie; urgency=low
+
+  * Better error handling.
+
+ -- Overdigit <info@overdigit.com>  Tue, 03 Mar 2026 16:02:35 +0100
+
+wp360-codesys-bridge (0.1.2-1) trixie; urgency=low
+
+  * Better error handling.
+
+ -- Overdigit <info@overdigit.com>  Tue, 03 Mar 2026 15:09:09 +0100
+
+wp360-codesys-bridge (0.1.1-1) trixie; urgency=low
+
+  * Fixed typo.
+
+ -- Overdigit <info@overdigit.com>  Tue, 03 Mar 2026 12:27:48 +0100
+
+wp360-codesys-bridge (0.1.0-1) trixie; urgency=low
+
+  * Initial release.
+
+ -- Overdigit <info@overdigit.com>  Wed, 11 Feb 2026 11:31:02 +0100

@@ -1,0 +1,17 @@
+Source: wp360-codesys-bridge
+Section: misc
+Priority: optional
+Maintainer: Overdigit <info@overdigit.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.5.1
+#Homepage: <insert the upstream URL, if relevant>
+Rules-Requires-Root: no
+#Vcs-Git: https://salsa.debian.org/debian/wp360-packages.git
+#Vcs-Browser: https://salsa.debian.org/debian/wp360-packages
+
+Package: wp360-codesys-bridge
+Version: 0.1.0
+Architecture: any
+Maintainer: Overdigit <info@overdigit.com>
+Depends: ${misc:Depends}
+Description: Bridge software to extend Codesys capabilities fully utilizing the underlying Linux environment.

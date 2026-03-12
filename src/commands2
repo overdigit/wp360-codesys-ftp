@@ -1,0 +1,13 @@
+{"hostname": "192.168.122.159", "username": "nix", "password": "123"}
+{"command": "Download", "remote": "longest«", "local": "/home/nix/longest"}
+{"command": "Upload", "remote": "test.rs", "local":"src/main.rs"}
+{"command": "Rename", "remote": "test.rs", "new_name": "main.rs"}
+{"command": "GetFileSize", "remote": "main.rs"}
+{"command": "NoOp"}
+{"command": "Delete", "remote": "main.rs"}
+{"command": "CreateDirectory", "remote": "stuff"}
+{"command": "SetDirectory", "remote": "stuff"}
+{"command": "GetDirectory"}
+{"command": "SetDirectory", "remote": ".."}
+{"command": "GetDirectory"}
+{"command": "DeleteDirectory", "remote": "stuff"}
