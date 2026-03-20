@@ -1,0 +1,10 @@
+[Unit]
+Description=FTP daemon for CODESYS integration
+After=multi-user.target
+
+[Service]
+ExecStartPre=-unlink /var/opt/codesyscontrolapi/extfuncs/wp360-ftp.sock
+ExecStart=/usr/bin/wp360-codesys-ftp
+
+[Install]
+WantedBy=multi-user.target
