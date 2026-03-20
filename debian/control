@@ -1,4 +1,4 @@
-Source: wp360-codesys-bridge
+Source: wp360-codesys-ftp
 Section: misc
 Priority: optional
 Maintainer: Overdigit <info@overdigit.com>
@@ -9,7 +9,7 @@ Rules-Requires-Root: no
 #Vcs-Git: https://salsa.debian.org/debian/wp360-packages.git
 #Vcs-Browser: https://salsa.debian.org/debian/wp360-packages
 
-Package: wp360-codesys-bridge
+Package: wp360-codesys-ftp
 Version: 0.1.0
 Architecture: any
 Maintainer: Overdigit <info@overdigit.com>
