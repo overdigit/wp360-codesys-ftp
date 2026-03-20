@@ -1,3 +1,4 @@
-CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=/usr/bin/aarch64-linux-gnu-gcc
-HOST_GCC=gcc
-CC_aarch64_unknown_linux_gnu=/usr/bin/aarch64-linux-gnu-gcc
+export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=/usr/bin/aarch64-linux-gnu-gcc
+export HOST_GCC=gcc
+export CC_aarch64_unknown_linux_gnu=/usr/bin/aarch64-linux-gnu-gcc
+export TARGET_PKG_CONFIG_SYSROOT_DIR=/var/cache/pbuilder/base-trixie-arm64.cow/
