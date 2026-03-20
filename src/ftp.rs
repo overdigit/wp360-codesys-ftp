@@ -374,7 +374,7 @@ fn perform_operation(ftp: &mut RustlsFtpStream, cmd: &Command) -> FtpResult {
 }
 
 fn ftp_path(path: &Path) -> Result<PathBuf, FtpResultError> {
-    let base_path = Path::new("/home/nix/build/wp360-codesys-ftp/");
+    let base_path = Path::new("/var/opt/codesys/PlcLogic/");
     let complete_path = base_path.join(path);
 
     if complete_path == base_path {
