@@ -65,6 +65,10 @@ enum FtpResultError {
     AlreadyConnected,
     NotConnected,
     SyntaxError,
+    HostUnreachable,
+    NetworkUnreachable,
+    InvalidAddress,
+    UnimplementedError
 }
 
 impl Serialize for FtpResultError {
@@ -74,6 +78,7 @@ impl Serialize for FtpResultError {
     {
         match self {
             FtpResultError::UnexpectedResponse(code) => serializer.serialize_u32(code + 1000),
+
             FtpResultError::TlsError => serializer.serialize_u32(10),
             FtpResultError::BadResponse => serializer.serialize_u32(20),
             FtpResultError::DataConnectionAlreadyOpen => serializer.serialize_u32(30),
@@ -84,6 +89,11 @@ impl Serialize for FtpResultError {
             FtpResultError::AlreadyConnected => serializer.serialize_u32(80),
             FtpResultError::NotConnected => serializer.serialize_u32(90),
             FtpResultError::SyntaxError => serializer.serialize_u32(100),
+            FtpResultError::HostUnreachable => serializer.serialize_u32(110),
+            FtpResultError::NetworkUnreachable => serializer.serialize_u32(120),
+            FtpResultError::InvalidAddress => serializer.serialize_u32(130),
+
+            FtpResultError::UnimplementedError => serializer.serialize_u32(10000),
         }
     }
 }
@@ -105,14 +115,10 @@ impl From<FtpError> for FtpResult {
     fn from(e: FtpError) -> Self {
         match e {
             FtpError::ConnectionError(e) => FtpResultError::from(e).into(),
-            FtpError::UnexpectedResponse(r) => {
-                FtpResultError::UnexpectedResponse(r.status.code()).into()
-            }
+            FtpError::UnexpectedResponse(r) => FtpResultError::UnexpectedResponse(r.status.code()).into(),
             FtpError::SecureError(_s) => FtpResultError::TlsError.into(),
             FtpError::BadResponse => FtpResultError::BadResponse.into(),
-            FtpError::InvalidAddress(_e) => {
-                unreachable!()
-            }
+            FtpError::InvalidAddress(_e) => FtpResultError::InvalidAddress.into(),
             FtpError::DataConnectionAlreadyOpen => FtpResultError::DataConnectionAlreadyOpen.into(),
         }
     }
@@ -124,9 +130,12 @@ impl From<std::io::Error> for FtpResultError {
             std::io::ErrorKind::InvalidFilename => FtpResultError::LocalForbidden,
             std::io::ErrorKind::InvalidInput => FtpResultError::InvalidLocalPath,
             std::io::ErrorKind::InvalidData => FtpResultError::InvalidRemoteUTF8,
+            std::io::ErrorKind::HostUnreachable => FtpResultError::HostUnreachable,
+            std::io::ErrorKind::NetworkUnreachable => FtpResultError::NetworkUnreachable,
+
             _ => {
                 eprintln!("{:?}", error);
-                todo!()
+                FtpResultError::UnimplementedError // TODO: implement errors
             }
         }
     }
