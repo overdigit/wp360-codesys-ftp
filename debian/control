@@ -2,7 +2,7 @@ Source: wp360-codesys-ftp
 Section: misc
 Priority: optional
 Maintainer: Overdigit <info@overdigit.com>
-Build-Depends: debhelper-compat (= 13), rustc
+Build-Depends: debhelper-compat (= 13), cargo
 Standards-Version: 4.5.1
 #Homepage: <insert the upstream URL, if relevant>
 Rules-Requires-Root: no
