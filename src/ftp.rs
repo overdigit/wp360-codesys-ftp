@@ -91,32 +91,32 @@ impl Serialize for FtpResultError {
             // 100 - 1000
             FtpResultError::UnexpectedResponse(code) => serializer.serialize_u32(*code),
 
-            FtpResultError::NetworkDown        => serializer.serialize_u32(10),
+            FtpResultError::NetworkDown => serializer.serialize_u32(10),
             FtpResultError::NetworkUnreachable => serializer.serialize_u32(12),
-            FtpResultError::HostUnreachable    => serializer.serialize_u32(14),
-            FtpResultError::ConnectionRefused  => serializer.serialize_u32(16),
-            FtpResultError::TlsError           => serializer.serialize_u32(18),
-            FtpResultError::ConnectionReset    => serializer.serialize_u32(20),
-            FtpResultError::ConnectionAborted  => serializer.serialize_u32(22),
-            FtpResultError::TimedOut           => serializer.serialize_u32(24),
-            
-            FtpResultError::SyntaxError               => serializer.serialize_u32(30),
-            FtpResultError::NotConnected              => serializer.serialize_u32(32),
-            FtpResultError::InvalidAddress            => serializer.serialize_u32(34),
-            FtpResultError::AlreadyConnected          => serializer.serialize_u32(36),
-            FtpResultError::InvalidRemoteUTF8         => serializer.serialize_u32(38),
+            FtpResultError::HostUnreachable => serializer.serialize_u32(14),
+            FtpResultError::ConnectionRefused => serializer.serialize_u32(16),
+            FtpResultError::TlsError => serializer.serialize_u32(18),
+            FtpResultError::ConnectionReset => serializer.serialize_u32(20),
+            FtpResultError::ConnectionAborted => serializer.serialize_u32(22),
+            FtpResultError::TimedOut => serializer.serialize_u32(24),
+
+            FtpResultError::SyntaxError => serializer.serialize_u32(30),
+            FtpResultError::NotConnected => serializer.serialize_u32(32),
+            FtpResultError::InvalidAddress => serializer.serialize_u32(34),
+            FtpResultError::AlreadyConnected => serializer.serialize_u32(36),
+            FtpResultError::InvalidRemoteUTF8 => serializer.serialize_u32(38),
             FtpResultError::DataConnectionAlreadyOpen => serializer.serialize_u32(40),
-            FtpResultError::BadResponse               => serializer.serialize_u32(42),
-            
-            FtpResultError::LocalForbidden     => serializer.serialize_u32(50),
-            FtpResultError::InvalidLocalPath   => serializer.serialize_u32(52),
-            FtpResultError::RemoteIsDirectory  => serializer.serialize_u32(54),
-            FtpResultError::AlreadyExists      => serializer.serialize_u32(56),
-            FtpResultError::IsADirectory       => serializer.serialize_u32(58),
+            FtpResultError::BadResponse => serializer.serialize_u32(42),
+
+            FtpResultError::LocalForbidden => serializer.serialize_u32(50),
+            FtpResultError::InvalidLocalPath => serializer.serialize_u32(52),
+            FtpResultError::RemoteIsDirectory => serializer.serialize_u32(54),
+            FtpResultError::AlreadyExists => serializer.serialize_u32(56),
+            FtpResultError::IsADirectory => serializer.serialize_u32(58),
             FtpResultError::ReadOnlyFilesystem => serializer.serialize_u32(60),
-            FtpResultError::StorageFull        => serializer.serialize_u32(62),
-            FtpResultError::QuotaExceeded      => serializer.serialize_u32(64),
-            FtpResultError::FileTooLarge       => serializer.serialize_u32(66),
+            FtpResultError::StorageFull => serializer.serialize_u32(62),
+            FtpResultError::QuotaExceeded => serializer.serialize_u32(64),
+            FtpResultError::FileTooLarge => serializer.serialize_u32(66),
 
             FtpResultError::IOOther => serializer.serialize_u32(90),
 
@@ -159,7 +159,7 @@ impl From<std::io::Error> for FtpResultError {
             //std::io::ErrorKind::InvalidData => FtpResultError::InvalidRemoteUTF8,
             std::io::ErrorKind::HostUnreachable => FtpResultError::HostUnreachable,
             std::io::ErrorKind::NetworkUnreachable => FtpResultError::NetworkUnreachable,
-            
+
             std::io::ErrorKind::PermissionDenied => FtpResultError::LocalForbidden, // TODO: is this correct? Probably, but worth thinking over
             std::io::ErrorKind::ConnectionRefused => FtpResultError::ConnectionRefused,
             std::io::ErrorKind::ConnectionReset => FtpResultError::ConnectionReset,
@@ -205,13 +205,14 @@ pub fn client(mut stream: UnixStream) {
         .with_root_certificates(root_store)
         .with_no_client_auth();
 
-    let message: Command = match serde_xml_rs::de::from_reader::<Command, &mut UnixStream>(&mut stream) {
-        Ok(m) => m,
-        Err(_) => {
-            fatal_error(&stream, FtpResult::Error(FtpResultError::SyntaxError));
-            return;
-        },
-    };
+    let message: Command =
+        match serde_xml_rs::de::from_reader::<Command, &mut UnixStream>(&mut stream) {
+            Ok(m) => m,
+            Err(_) => {
+                fatal_error(&stream, FtpResult::Error(FtpResultError::SyntaxError));
+                return;
+            }
+        };
     let Command::Connect {
         hostname,
         port,
@@ -231,7 +232,7 @@ pub fn client(mut stream: UnixStream) {
             println!("{:?}", e);
             fatal_error(&stream, FtpResultError::from(e).into());
             return;
-        },
+        }
     };
 
     ftp_stream.set_mode(if passive {
@@ -250,15 +251,15 @@ pub fn client(mut stream: UnixStream) {
     }
 
     match ftp_stream.login(username, password) {
-        Ok(()) => { },
+        Ok(()) => {}
         Err(e) => {
             println!("{:?}", e);
             fatal_error(&stream, FtpResultError::from(e).into());
             return;
-        },
+        }
     }
     match ftp_stream.transfer_type(suppaftp::types::FileType::Binary) {
-        Ok(()) => { },
+        Ok(()) => {}
         Err(e) => {
             fatal_error(&stream, FtpResultError::from(e).into());
             return;
@@ -266,13 +267,13 @@ pub fn client(mut stream: UnixStream) {
     }
 
     match serde_xml_rs::ser::to_writer(&mut stream, &FtpResult::Success) {
-        Ok(_t) => {},
+        Ok(_t) => {}
         Err(_e) => {
             let _ = ftp_stream.quit();
             return;
         }
     }
-    
+
     loop {
         let cmd = match serde_xml_rs::de::from_reader(&mut stream) {
             Ok(t) => t,
@@ -281,7 +282,7 @@ pub fn client(mut stream: UnixStream) {
                 fatal_error(&stream, FtpResult::Error(FtpResultError::SyntaxError));
                 let _ = ftp_stream.quit(); // We're quitting either way, no need to handle err
                 break;
-            },
+            }
         };
         let res = perform_operation(&mut ftp_stream, &cmd);
         let Ok(()) = serde_xml_rs::ser::to_writer(&mut stream, &res) else {
