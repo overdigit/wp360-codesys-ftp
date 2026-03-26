@@ -81,7 +81,7 @@ enum FtpResultError {
     FileTooLarge,
     IOOther,
 }
-
+const FTP_ERROR_CODE_BASE: u32 = 4000;
 impl Serialize for FtpResultError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -89,38 +89,37 @@ impl Serialize for FtpResultError {
     {
         match self {
             // 100 - 1000
-            FtpResultError::UnexpectedResponse(code) => serializer.serialize_u32(*code),
+            FtpResultError::UnexpectedResponse(code) => serializer.serialize_u32(FTP_ERROR_CODE_BASE + code),
 
-            FtpResultError::NetworkDown => serializer.serialize_u32(10),
-            FtpResultError::NetworkUnreachable => serializer.serialize_u32(12),
-            FtpResultError::HostUnreachable => serializer.serialize_u32(14),
-            FtpResultError::ConnectionRefused => serializer.serialize_u32(16),
-            FtpResultError::TlsError => serializer.serialize_u32(18),
-            FtpResultError::ConnectionReset => serializer.serialize_u32(20),
-            FtpResultError::ConnectionAborted => serializer.serialize_u32(22),
-            FtpResultError::TimedOut => serializer.serialize_u32(24),
+            FtpResultError::NetworkDown => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 10),
+            FtpResultError::NetworkUnreachable => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 12),
+            FtpResultError::HostUnreachable => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 14),
+            FtpResultError::ConnectionRefused => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 16),
+            FtpResultError::TlsError => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 18),
+            FtpResultError::ConnectionReset => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 20),
+            FtpResultError::ConnectionAborted => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 22),
+            FtpResultError::TimedOut => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 24),
 
-            FtpResultError::SyntaxError => serializer.serialize_u32(30),
-            FtpResultError::NotConnected => serializer.serialize_u32(32),
-            FtpResultError::InvalidAddress => serializer.serialize_u32(34),
-            FtpResultError::AlreadyConnected => serializer.serialize_u32(36),
-            FtpResultError::InvalidRemoteUTF8 => serializer.serialize_u32(38),
-            FtpResultError::DataConnectionAlreadyOpen => serializer.serialize_u32(40),
-            FtpResultError::BadResponse => serializer.serialize_u32(42),
+            FtpResultError::SyntaxError => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 30),
+            FtpResultError::NotConnected => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 32),
+            FtpResultError::InvalidAddress => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 34),
+            FtpResultError::AlreadyConnected => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 36),
+            FtpResultError::InvalidRemoteUTF8 => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 38),
+            FtpResultError::DataConnectionAlreadyOpen => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 40),
+            FtpResultError::BadResponse => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 42),
 
-            FtpResultError::LocalForbidden => serializer.serialize_u32(50),
-            FtpResultError::InvalidLocalPath => serializer.serialize_u32(52),
-            FtpResultError::RemoteIsDirectory => serializer.serialize_u32(54),
-            FtpResultError::AlreadyExists => serializer.serialize_u32(56),
-            FtpResultError::IsADirectory => serializer.serialize_u32(58),
-            FtpResultError::ReadOnlyFilesystem => serializer.serialize_u32(60),
-            FtpResultError::StorageFull => serializer.serialize_u32(62),
-            FtpResultError::QuotaExceeded => serializer.serialize_u32(64),
-            FtpResultError::FileTooLarge => serializer.serialize_u32(66),
+            FtpResultError::LocalForbidden => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 50),
+            FtpResultError::InvalidLocalPath => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 52),
+            FtpResultError::RemoteIsDirectory => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 54),
+            FtpResultError::AlreadyExists => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 56),
+            FtpResultError::IsADirectory => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 58),
+            FtpResultError::ReadOnlyFilesystem => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 60),
+            FtpResultError::StorageFull => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 62),
+            FtpResultError::QuotaExceeded => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 64),
+            FtpResultError::FileTooLarge => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 66),
 
-            FtpResultError::IOOther => serializer.serialize_u32(90),
-
-            FtpResultError::UnimplementedError => serializer.serialize_u32(10000),
+            FtpResultError::IOOther => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 90),
+            FtpResultError::UnimplementedError => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 91),
         }
     }
 }
@@ -269,7 +268,7 @@ pub fn client(mut stream: UnixStream) {
     match serde_xml_rs::ser::to_writer(&mut stream, &FtpResult::Success) {
         Ok(_t) => {}
         Err(_e) => {
-            let _ = ftp_stream.quit();
+            let _ = ftp_stream.quit(); // No need to handle the error; we already can't communicate back
             return;
         }
     }
