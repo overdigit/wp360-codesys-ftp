@@ -1,15 +1,13 @@
-prefix = /usr
+include env
 
-all: target/release/wp360-codesys-ftp
+all: deb
 
-target/release/wp360-codesys-ftp: src/main.rs src/ftp.rs
-	cargo build --release
+deb: target/debian/wp360-codesys-ftp_0.1.1-1_arm64.deb
 
-install: all
-	install -d $(DESTDIR)$(prefix)/lib/wp360-codesys-ftp
-	install target/release/wp360-codesys-ftp $(DESTDIR)$(prefix)/lib/wp360-codesys-bridge/wp360-codesys-ftp
+target/debian/wp360-codesys-ftp_0.1.1-1_arm64.deb: src/main.rs src/ftp.rs
+	cargo deb --target aarch64-unknown-linux-gnu
 
 clean:
 	-rm -r target
 
-.PHONY: all install clean
+.PHONY: all clean deb
