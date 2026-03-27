@@ -153,9 +153,6 @@ impl From<FtpError> for FtpResultError {
 impl From<std::io::Error> for FtpResultError {
     fn from(error: std::io::Error) -> Self {
         match error.kind() {
-            //std::io::ErrorKind::InvalidFilename => FtpResultError::LocalForbidden,
-            //std::io::ErrorKind::InvalidInput => FtpResultError::InvalidLocalPath,
-            //std::io::ErrorKind::InvalidData => FtpResultError::InvalidRemoteUTF8,
             std::io::ErrorKind::HostUnreachable => FtpResultError::HostUnreachable,
             std::io::ErrorKind::NetworkUnreachable => FtpResultError::NetworkUnreachable,
 
