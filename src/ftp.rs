@@ -125,6 +125,7 @@ impl Serialize for FtpResultError {
 }
 
 #[derive(Serialize, Debug)]
+#[serde(rename = "Result")]
 enum FtpResult {
     FileSize(usize),
     Directory(String),
