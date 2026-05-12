@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::prelude::*;
+use std::net::ToSocketAddrs;
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -47,6 +48,7 @@ enum Command {
         password: String,
         passive: bool,
         tls: bool,
+        timeout: Option<u64>,
     },
 }
 
@@ -79,6 +81,7 @@ enum FtpResultError {
     StorageFull,
     QuotaExceeded,
     FileTooLarge,
+    FileNotFound,
     IOOther,
 }
 const FTP_ERROR_CODE_BASE: u32 = 4000;
@@ -89,10 +92,14 @@ impl Serialize for FtpResultError {
     {
         match self {
             // 100 - 1000
-            FtpResultError::UnexpectedResponse(code) => serializer.serialize_u32(FTP_ERROR_CODE_BASE + code),
+            FtpResultError::UnexpectedResponse(code) => {
+                serializer.serialize_u32(FTP_ERROR_CODE_BASE + code)
+            }
 
             FtpResultError::NetworkDown => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 10),
-            FtpResultError::NetworkUnreachable => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 12),
+            FtpResultError::NetworkUnreachable => {
+                serializer.serialize_u32(FTP_ERROR_CODE_BASE + 12)
+            }
             FtpResultError::HostUnreachable => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 14),
             FtpResultError::ConnectionRefused => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 16),
             FtpResultError::TlsError => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 18),
@@ -105,7 +112,9 @@ impl Serialize for FtpResultError {
             FtpResultError::InvalidAddress => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 34),
             FtpResultError::AlreadyConnected => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 36),
             FtpResultError::InvalidRemoteUTF8 => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 38),
-            FtpResultError::DataConnectionAlreadyOpen => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 40),
+            FtpResultError::DataConnectionAlreadyOpen => {
+                serializer.serialize_u32(FTP_ERROR_CODE_BASE + 40)
+            }
             FtpResultError::BadResponse => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 42),
 
             FtpResultError::LocalForbidden => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 50),
@@ -113,13 +122,18 @@ impl Serialize for FtpResultError {
             FtpResultError::RemoteIsDirectory => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 54),
             FtpResultError::AlreadyExists => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 56),
             FtpResultError::IsADirectory => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 58),
-            FtpResultError::ReadOnlyFilesystem => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 60),
+            FtpResultError::ReadOnlyFilesystem => {
+                serializer.serialize_u32(FTP_ERROR_CODE_BASE + 60)
+            }
             FtpResultError::StorageFull => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 62),
             FtpResultError::QuotaExceeded => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 64),
             FtpResultError::FileTooLarge => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 66),
+            FtpResultError::FileNotFound => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 68),
 
             FtpResultError::IOOther => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 90),
-            FtpResultError::UnimplementedError => serializer.serialize_u32(FTP_ERROR_CODE_BASE + 91),
+            FtpResultError::UnimplementedError => {
+                serializer.serialize_u32(FTP_ERROR_CODE_BASE + 91)
+            }
         }
     }
 }
@@ -165,11 +179,14 @@ impl From<std::io::Error> for FtpResultError {
             std::io::ErrorKind::AlreadyExists => FtpResultError::AlreadyExists, // Probably won't happen, as we happily overwrite?
             std::io::ErrorKind::IsADirectory => FtpResultError::IsADirectory,
             std::io::ErrorKind::ReadOnlyFilesystem => FtpResultError::ReadOnlyFilesystem, // Probably shouldn't happen unless they try writing on an iso usb drive
-            std::io::ErrorKind::TimedOut => FtpResultError::TimedOut,
+            std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock => {
+                FtpResultError::TimedOut
+            }
             std::io::ErrorKind::StorageFull => FtpResultError::StorageFull,
             std::io::ErrorKind::QuotaExceeded => FtpResultError::QuotaExceeded,
             std::io::ErrorKind::FileTooLarge => FtpResultError::FileTooLarge,
             std::io::ErrorKind::Other => FtpResultError::IOOther,
+            std::io::ErrorKind::NotFound => FtpResultError::FileNotFound,
 
             _ => {
                 FtpResultError::UnimplementedError // TODO: implement errors
@@ -187,7 +204,7 @@ impl From<Result<(), FtpError>> for FtpResult {
     }
 }
 
-fn fatal_error(mut stream: &UnixStream, res: FtpResult) {
+fn fatal_error(mut stream: &UnixStream, res: &FtpResult) {
     // Reasoning for ignoring these errors: we're quitting anyway, nothing more we can do
     let _ = serde_xml_rs::ser::to_writer(&mut stream, &res);
     let _ = stream.flush();
@@ -195,21 +212,20 @@ fn fatal_error(mut stream: &UnixStream, res: FtpResult) {
 }
 
 pub fn client(mut stream: UnixStream) {
-    let root_store =
-        rustls::RootCertStore::from_iter(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+    let root_store = webpki_roots::TLS_SERVER_ROOTS
+        .iter()
+        .cloned()
+        .collect::<rustls::RootCertStore>();
 
     let config = ClientConfig::builder()
         .with_root_certificates(root_store)
         .with_no_client_auth();
 
-    let message: Command =
-        match serde_xml_rs::de::from_reader::<Command, &mut UnixStream>(&mut stream) {
-            Ok(m) => m,
-            Err(_) => {
-                fatal_error(&stream, FtpResult::Error(FtpResultError::SyntaxError));
-                return;
-            }
-        };
+    let Ok(message) = serde_xml_rs::de::from_reader::<Command, &mut UnixStream>(&mut stream) else {
+        fatal_error(&stream, &FtpResult::Error(FtpResultError::SyntaxError));
+        return;
+    };
+
     let Command::Connect {
         hostname,
         port,
@@ -217,17 +233,34 @@ pub fn client(mut stream: UnixStream) {
         password,
         passive,
         tls,
+        timeout,
     } = message
     else {
-        fatal_error(&stream, FtpResult::Error(FtpResultError::NotConnected));
+        fatal_error(&stream, &FtpResult::Error(FtpResultError::NotConnected));
+        return;
+    };
+    let Ok(mut addrs) = format!("{hostname}:{port}").to_socket_addrs() else {
+        fatal_error(&stream, &FtpResult::Error(FtpResultError::InvalidAddress));
         return;
     };
 
-    let mut ftp_stream = match RustlsFtpStream::connect(format!("{}:{}", hostname, port)) {
+    let Some(addr) = addrs.next() else {
+        fatal_error(&stream, &FtpResult::Error(FtpResultError::InvalidAddress));
+        return;
+    };
+
+    let connection_r = if let Some(t) = timeout
+        && t > 0
+    {
+        RustlsFtpStream::connect_timeout(addr, std::time::Duration::from_millis(t))
+    } else {
+        RustlsFtpStream::connect(addr)
+    };
+    let mut ftp_stream = match connection_r {
         Ok(t) => t,
         Err(e) => {
-            println!("{:?}", e);
-            fatal_error(&stream, FtpResultError::from(e).into());
+            eprintln!("{e:?}");
+            fatal_error(&stream, &FtpResultError::from(e).into());
             return;
         }
     };
@@ -241,42 +274,49 @@ pub fn client(mut stream: UnixStream) {
         match ftp_stream.into_secure(RustlsConnector::from(Arc::new(config)), &hostname) {
             Ok(t) => ftp_stream = t,
             Err(e) => {
-                fatal_error(&stream, FtpResultError::from(e).into());
+                fatal_error(&stream, &FtpResultError::from(e).into());
                 return;
             }
         }
     }
 
-    match ftp_stream.login(username, password) {
-        Ok(()) => {}
-        Err(e) => {
-            println!("{:?}", e);
-            fatal_error(&stream, FtpResultError::from(e).into());
-            return;
-        }
-    }
-    match ftp_stream.transfer_type(suppaftp::types::FileType::Binary) {
-        Ok(()) => {}
-        Err(e) => {
-            fatal_error(&stream, FtpResultError::from(e).into());
-            return;
-        }
+    if let Err(e) = ftp_stream
+        .get_ref()
+        .set_read_timeout(timeout.map(std::time::Duration::from_millis))
+    {
+        fatal_error(&stream, &FtpResultError::from(e).into());
+        return;
     }
 
-    match serde_xml_rs::ser::to_writer(&mut stream, &FtpResult::Success) {
-        Ok(_t) => {}
-        Err(_e) => {
-            let _ = ftp_stream.quit(); // No need to handle the error; we already can't communicate back
-            return;
-        }
+    if let Err(e) = ftp_stream
+        .get_ref()
+        .set_write_timeout(timeout.map(std::time::Duration::from_millis))
+    {
+        fatal_error(&stream, &FtpResultError::from(e).into());
+        return;
+    }
+
+    if let Err(e) = ftp_stream.login(username, password) {
+        eprintln!("{e:?}");
+        fatal_error(&stream, &FtpResultError::from(e).into());
+        return;
+    }
+    if let Err(e) = ftp_stream.transfer_type(suppaftp::types::FileType::Binary) {
+        fatal_error(&stream, &FtpResultError::from(e).into());
+        return;
+    }
+
+    if let Err(_e) = serde_xml_rs::ser::to_writer(&mut stream, &FtpResult::Success) {
+        let _ = ftp_stream.quit(); // No need to handle the error; we already can't communicate back
+        return;
     }
 
     loop {
         let cmd = match serde_xml_rs::de::from_reader(&mut stream) {
             Ok(t) => t,
             Err(e) => {
-                println!("{:?}", e);
-                fatal_error(&stream, FtpResult::Error(FtpResultError::SyntaxError));
+                eprintln!("{e:?}");
+                fatal_error(&stream, &FtpResult::Error(FtpResultError::SyntaxError));
                 let _ = ftp_stream.quit(); // We're quitting either way, no need to handle err
                 break;
             }
@@ -296,11 +336,17 @@ fn perform_operation(ftp: &mut RustlsFtpStream, cmd: &Command) -> FtpResult {
         Command::Upload { local, remote } => {
             let path = match ftp_path(Path::new(local)) {
                 Ok(t) => t,
-                Err(e) => return e.into(),
+                Err(e) => {
+                    eprintln!("{e:?}");
+                    return e.into();
+                }
             };
             let mut file = match File::open(&path) {
                 Ok(t) => t,
-                Err(e) => return FtpResultError::from(e).into(),
+                Err(e) => {
+                    eprintln!("{e:?}");
+                    return FtpResultError::from(e).into();
+                }
             };
             let filename_path = path.file_name().unwrap().to_str();
             let filename = match remote {
@@ -312,12 +358,15 @@ fn perform_operation(ftp: &mut RustlsFtpStream, cmd: &Command) -> FtpResult {
             };
             match ftp.put_file(filename, &mut file) {
                 Ok(_) => FtpResult::Success,
-                Err(e) => FtpResultError::from(e).into(),
+                Err(e) => {
+                    eprintln!("{e:?}");
+                    FtpResultError::from(e).into()
+                }
             }
         }
 
         Command::Download { local, remote } => {
-            if remote.ends_with("/") {
+            if remote.ends_with('/') {
                 return FtpResultError::RemoteIsDirectory.into();
             }
             let path = match local {

@@ -1,4 +1,4 @@
-use inotify::{Inotify, WatchMask, EventMask};
+use inotify::{EventMask, Inotify, WatchMask};
 use std::error::Error;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::thread;
@@ -9,11 +9,14 @@ mod ftp;
 fn wait_for(dirname: &std::path::Path) -> Result<bool, Box<dyn Error>> {
     let mut ino = Inotify::init()?;
     let parent = dirname.parent().expect("This folder has no parent. How? It's the default folder, I wrote its path. What did you do?");
-    ino.watches().add(parent, WatchMask::DELETE_SELF | WatchMask::CREATE).unwrap();
+    ino.watches()
+        .add(parent, WatchMask::DELETE_SELF | WatchMask::CREATE)
+        .unwrap();
     if !dirname.exists() {
         loop {
             let mut buffer = [0; 1024];
-            let events = ino.read_events_blocking(&mut buffer)
+            let events = ino
+                .read_events_blocking(&mut buffer)
                 .expect("Error while reading events");
             for event in events {
                 match event.name {
@@ -21,7 +24,7 @@ fn wait_for(dirname: &std::path::Path) -> Result<bool, Box<dyn Error>> {
                         if parent.join(name) == dirname {
                             return Ok(true);
                         }
-                    },
+                    }
                     None => {
                         if event.mask == EventMask::DELETE_SELF {
                             return Err("The watched directory has been deleted.".into());
@@ -44,14 +47,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let dir_path = std::path::Path::new(&dir);
     if !dir_path.is_dir() {
         if env_set {
-            return Err(format!(
-                "Invalid path - \"{}\" does not exist or is not a directory",
-                dir
-            ).into());
-        } else {
-            let path = std::path::Path::new(&dir);
-            wait_for(path)?;
+            return Err(
+                format!("Invalid path - \"{dir}\" does not exist or is not a directory").into(),
+            );
         }
+        let path = std::path::Path::new(&dir);
+        wait_for(path)?;
     }
     let sock_path = dir_path.join("wp360-ftp.sock");
     match sock_path.try_exists() {
