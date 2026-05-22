@@ -14,9 +14,13 @@ webpki-roots = "1.0.6"
 inotify = "0.11.1"
 
 [package.metadata.deb]
+revision = "2"
 maintainer-scripts = "debian/"
 section = "misc"
 systemd-units = { }
 extended-description = """\
 A FTP client, using XML messages via Unix Domain Sockets as its interface.\
 Meant for use on OVERDIGIT WP360 PLC devices via the OVERDIGIT WP360 CODESYS library."""
+assets = [
+    ["target/release/wp360-codesys-ftp", "usr/libexec/wp360-codesys-ftp/", "755"],
+]

@@ -4,7 +4,7 @@ After=multi-user.target
 
 [Service]
 ExecStartPre=-unlink /var/opt/codesyscontrolapi/extfuncs/wp360-ftp.sock
-ExecStart=/usr/bin/wp360-codesys-ftp
+ExecStart=/usr/libexec/wp360-codesys-ftp/wp360-codesys-ftp
 
 [Install]
 WantedBy=multi-user.target
