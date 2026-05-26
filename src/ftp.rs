@@ -84,7 +84,7 @@ enum FtpResultError {
     FileNotFound,
     IOOther,
 }
-const FTP_ERROR_CODE_BASE: u32 = 4000;
+const FTP_ERROR_CODE_BASE: u32 = 0;
 impl Serialize for FtpResultError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

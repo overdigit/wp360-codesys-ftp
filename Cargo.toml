@@ -2,7 +2,7 @@
 name = "wp360-codesys-ftp"
 authors = ["OVERDIGIT <info@overdigit.com>"]
 description = "A FTP external client daemon for CODESYS."
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 
 [dependencies]
@@ -14,7 +14,7 @@ webpki-roots = "1.0.6"
 inotify = "0.11.1"
 
 [package.metadata.deb]
-revision = "2"
+revision = "1"
 maintainer-scripts = "debian/"
 section = "misc"
 systemd-units = { }
