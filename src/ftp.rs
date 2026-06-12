@@ -386,14 +386,14 @@ fn perform_operation(ftp: &mut RustlsFtpStream, cmd: &Command) -> FtpResult {
                 Ok(t) => t,
                 Err(e) => return FtpResultError::from(e).into(),
             };
-            let buf = match ftp.retr_as_buffer(remote) {
-                Ok(t) => t,
-                Err(e) => return FtpResultError::from(e).into(),
-            };
-            let Err(e) = file.write_all(buf.get_ref()) else {
-                return FtpResult::Success;
-            };
-            FtpResultError::from(e).into()
+            match ftp.retr(remote, move |reader| {
+                std::io::copy(reader, &mut file)
+                    .map(|_| ())
+                    .map_err(FtpError::ConnectionError)
+            }) {
+                Ok(_) => FtpResult::Success,
+                Err(e) => FtpResultError::from(e).into()
+            }
         }
 
         Command::Rename { remote, new_name } => ftp.rename(remote, new_name).into(),
