@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::net::ToSocketAddrs;
@@ -9,6 +10,8 @@ use suppaftp::FtpError;
 use suppaftp::rustls;
 use suppaftp::rustls::ClientConfig;
 use suppaftp::{RustlsConnector, RustlsFtpStream};
+
+use crate::PLACEHOLDERS;
 
 #[derive(Deserialize, Debug)]
 enum Command {
@@ -239,12 +242,7 @@ pub fn client(mut stream: UnixStream) {
         fatal_error(&stream, &FtpResult::Error(FtpResultError::NotConnected));
         return;
     };
-    let Ok(mut addrs) = format!("{hostname}:{port}").to_socket_addrs() else {
-        fatal_error(&stream, &FtpResult::Error(FtpResultError::InvalidAddress));
-        return;
-    };
-
-    let Some(addr) = addrs.next() else {
+    let Ok(Some(addr)) = format!("{hostname}:{port}").to_socket_addrs().map(|mut i| i.next()) else {
         fatal_error(&stream, &FtpResult::Error(FtpResultError::InvalidAddress));
         return;
     };
@@ -391,8 +389,8 @@ fn perform_operation(ftp: &mut RustlsFtpStream, cmd: &Command) -> FtpResult {
                     .map(|_| ())
                     .map_err(FtpError::ConnectionError)
             }) {
-                Ok(_) => FtpResult::Success,
-                Err(e) => FtpResultError::from(e).into()
+                Ok(()) => FtpResult::Success,
+                Err(e) => FtpResultError::from(e).into(),
             }
         }
 
@@ -420,8 +418,30 @@ fn perform_operation(ftp: &mut RustlsFtpStream, cmd: &Command) -> FtpResult {
     }
 }
 
+fn sub_path_placeholders(path: &Path, paths: &HashMap<&String, &Path>) -> Result<PathBuf, FtpResultError> {
+    let Some(first) = path.components().next() else {
+        return Err(FtpResultError::InvalidLocalPath);
+    };
+
+    if let std::path::Component::Normal(f) = first 
+        && let Some((_placeholder_id, placeholder_path)) = paths.iter().find(|(k, _v)| ****k == *f) { // TODO: fix this mess
+            let stripped_path = path.strip_prefix(first).unwrap();
+            let new_path = placeholder_path.join(stripped_path);
+            return Ok(new_path.clone());
+        
+    }
+    Ok(path.to_owned())
+}
+
 fn ftp_path(path: &Path) -> Result<PathBuf, FtpResultError> {
     let base_path = Path::new("/var/opt/codesys/PlcLogic/");
+    let mut paths = PLACEHOLDERS.get().unwrap().iter().map(|(k, v)| (k, Path::new(v))).collect::<HashMap<_,_>>();
+    let empty_string = &String::new();
+    paths.insert(empty_string, base_path);
+
+    let buf = sub_path_placeholders(path, &paths)?;
+    let path = &buf;
+
     let complete_path = base_path.join(path);
 
     if complete_path == base_path {
@@ -436,7 +456,7 @@ fn ftp_path(path: &Path) -> Result<PathBuf, FtpResultError> {
     };
 
     let true_parent = parent.canonicalize()?;
-    if !true_parent.starts_with(base_path) {
+    if !paths.values().any(|p| true_parent.starts_with(p)) {
         return Err(FtpResultError::LocalForbidden);
     }
     let true_path = parent.join(filename);
